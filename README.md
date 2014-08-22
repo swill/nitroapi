@@ -12,7 +12,8 @@ api.request(self, path, payload=None, method=None)
 Builds the request and returns a json object of the result or None.
 If 'payload' is specified, the request will be a POST, otherwise it will be a GET.
 
-:param path: a path appended to 'self.base_path' (default of '/nitro/v1'), eg: path='/config' => '/nitro/v1/config'
+:param path: a path appended to 'self.base_path' (default of '/nitro/v1'), 
+             eg: path='/config' => '/nitro/v1/config'
 :type path: str or unicode
 
 :param payload: the object to be passed to the server
