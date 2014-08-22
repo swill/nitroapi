@@ -23,6 +23,7 @@ If 'payload' is specified, the request will be a POST, otherwise it will be a GE
 :type method: str or unicode
 
 :returns: the result of the request as a dictionary; 
+    if result is json: return json as a dict
     if result == '': return {'headers': <headers dict>}
     if result != json and result != '': return {'result': '<text returned>'}
 :rtype: dict or None
