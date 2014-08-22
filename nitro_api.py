@@ -41,7 +41,7 @@ import urllib
 
 args = docopt(__doc__)
 
-class API(args):
+class API(object):
     """
     Login and run queries against the Nitro API for NetScaler 10.1.
 
