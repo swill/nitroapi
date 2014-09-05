@@ -121,7 +121,7 @@ class API(object):
         """
         if self.session or (self.username and self.password and payload and 'login' in payload):
             result = None
-            headers = {}
+            headers = {'Accept':'application/json'}
             cookies = {}
 
             url = self.protocol+'://'+self.host+self.base_path+path
