@@ -1,8 +1,10 @@
 NITRO API Wrapper
 =================
-This project is a minimalist wrapper around the NetScaler NITRO API.  Its purpose is to expedite the process of testing the API and building scripts to do useful tasks.
+This project is a minimalist wrapper around the NetScaler NITRO API.  Its purpose 
+is to expedite the process of testing the API and building scripts to do useful tasks.
 
-This project exposes a single `API` class with a simple `request` method.  This method takes a NITRO API call and returns a python dictionary with the result.
+This project exposes a single `API` class with a simple `request` method.  This 
+method takes a NITRO API call and returns a python dictionary with the result.
 
 ``` python
 api.request(self, path, payload=None, method=None)
@@ -53,7 +55,8 @@ api = API(args)
 
 INSTALL
 =======
-This project does not need to be installed, it can be run in-place.  However, it does depend on a few libraries to keep things simple.
+This project does not need to be installed, it can be run in-place.  
+However, it does depend on a few libraries to keep things simple.
 
 docops
 ------
