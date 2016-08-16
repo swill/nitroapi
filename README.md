@@ -69,6 +69,7 @@ api.request('/config/logout', {'logout': {}})
 
 
 **Examples using the `CLI` sub-class:**
+
 Duplicate the `./cli_example.py` to get started.
 
 ``` python
