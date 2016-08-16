@@ -4,6 +4,8 @@ This project is a minimalist wrapper around the NetScaler NITRO API.  Its purpos
 is to expedite the process of testing the API and building scripts to do useful tasks.
 
 It is expected that you refer to the NITRO documentation while using this lib.
+The NITRO REST API documentation can be downloaded from your NetScaler by
+navigating to: `Downloads > NITRO API Documentation`
 
 There are two ways in which this lib can be consumed:
 
