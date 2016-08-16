@@ -16,27 +16,28 @@
 
 """
 Usage:
-  api_examples.py (--host=<arg> --username=<arg> --password=<arg>) [options]
-  api_examples.py (-h | --help)
+  cli_example.py [--json=<arg>] [--endpoint=<arg> --username=<arg> --password=<arg>] [options]
+  cli_example.py (-h | --help)
 
 Options:
   -h --help             Show this screen.
-  --host=<arg>          NetScaler IP.
+  --json=<arg>          Path to a JSON config file with the same names as the options (without the '--' prefix).
+  --endpoint=<arg>      NetScaler URL.
   --username=<arg>      NetScaler username.
   --password=<arg>      NetScaler password.
-  --protocol=<arg>      Protocol used to connect to the NetScaler (http | https) [default: http].
   --base_path=<arg>     Base NetScaler API path [default: /nitro/v1].
   --logging=<arg>       Boolean to turn on or off logging [default: True].
-  --log=<arg>           The log file to be used [default: logs/nitro_api.log].
+  --log_level=<arg>     The logging verbosity. [default: DEBUG].
+                        Valid entries are: CRITICAL | ERROR | WARNING | INFO | DEBUG | NOTSET
+  --log=<arg>           The log file to be used [default: logs/nitroapi.log].
   --clear_log=<arg>     Removes the log each time the API object is created [default: True].
+  --verify_ssl=<arg>    Verify the SSL Certificate for a target HTTPS endpoint [default: True].
 """
 
-from docopt import docopt
-from nitro_api import API
+from nitroapi import CLI
 import pprint
 
-args = docopt(__doc__)
-
 if __name__ == '__main__':
-    with API(args) as api:
+    # call the constructor with the __doc__ value...
+    with CLI(__doc__) as api:
         pprint.pprint(api.request('/stat/system'))

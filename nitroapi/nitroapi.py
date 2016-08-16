@@ -14,23 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Usage:
-  nitro_api.py (--host=<arg> --username=<arg> --password=<arg>) [options]
-  nitro_api.py (-h | --help)
-
-Options:
-  -h --help             Show this screen.
-  --host=<arg>          NetScaler IP.
-  --username=<arg>      NetScaler username.
-  --password=<arg>      NetScaler password.
-  --protocol=<arg>      Protocol used to connect to the NetScaler (http | https) [default: http].
-  --base_path=<arg>     Base NetScaler API path [default: /nitro/v1].
-  --logging=<arg>       Boolean to turn on or off logging [default: True].
-  --log=<arg>           The log file to be used [default: logs/nitro_api.log].
-  --clear_log=<arg>     Removes the log each time the API object is created [default: True].
-"""
-
 from docopt import docopt
 import json
 import os
@@ -38,19 +21,18 @@ import pprint
 import requests
 import urlparse
 import urllib
-
-args = docopt(__doc__)
+import logging as _logging
 
 class API(object):
     """
-    Login and run queries against the Nitro API for NetScaler 10.1.
+    Login and run queries against the Nitro API for NetScaler 10.x+.
 
     ## Recommended usage using WITH (to automatically login and logout):
-    with API(args) as api:
+    with API(username="your user", password="your pass", endpoint="ns url") as api:
         system_stats = api.request('/stat/system')
 
     ## Manual setup and tear down example (requires explicit logout):
-    api = API(args)
+    api = API(username="your user", password="your pass", endpoint="ns url")
     api.request('/config/login', {
         'login': {
             'username':api.username,
@@ -61,21 +43,57 @@ class API(object):
     api.request('/config/logout', {'logout': {}})
     """
     
-    def __init__(self, args):        
-        self.host = args['--host']
-        self.username = args['--username']
-        self.password = args['--password']
-        self.protocol = args['--protocol']
-        self.base_path = args['--base_path']
-        self.logging = True if args['--logging'].lower() == 'true' else False
-        self.log = args['--log']
+    def __init__(
+            self, 
+            username,
+            password,
+            endpoint,
+            base_path="/nitro/v1",
+            logging=True,
+            log_level="DEBUG",
+            log="",
+            clear_log=True,
+            verify_ssl=True):
+
+        self.username = username
+        self.password = password
+        self.endpoint = endpoint
+        self.base_path = base_path
+        self.logging = logging
+        self.log = log
         self.log_dir = os.path.dirname(self.log)
-        self.clear_log = True if args['--clear_log'].lower() == 'true' else False
-        if self.log_dir and not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
-        if self.clear_log and os.path.exists(self.log):
-            open(self.log, 'w').close()
+        self.clear_log = clear_log
+        self.verify_ssl = verify_ssl
         self.session = None
+
+        self.log_level = 0
+        log_levels = {
+            "CRITICAL": 50,
+            "ERROR": 40,
+            "WARNING": 30,
+            "INFO": 20,
+            "DEBUG": 10,
+            "NOTSET": 0
+        }
+        if log_level.upper() in log_levels:
+            self.log_level = log_levels[log_level.upper()]
+
+        if self.logging:
+            if self.log_dir and not os.path.exists(self.log_dir):
+                os.makedirs(self.log_dir)
+
+            if self.clear_log and os.path.exists(self.log):
+                open(self.log, 'w').close()
+
+            _logging.basicConfig(
+                filename=self.log,
+                level=self.log_level,
+                format='%(asctime)s %(message)s',
+                datefmt='%d-%m-%Y %I:%M:%S %p' 
+            )
+
+            self.logger = _logging.getLogger(__name__)
+
 
     def __enter__(self):
         # login to get a session
@@ -121,70 +139,66 @@ class API(object):
         """
         if self.session or (self.username and self.password and payload and 'login' in payload):
             result = None
-            headers = {'Accept':'application/json'}
+            headers = {'Accept':'application/json', 'Connection':'keep-alive'}
             cookies = {}
 
-            url = self.protocol+'://'+self.host+self.base_path+path
+            url = '%s/%s/%s' % (self.endpoint.rstrip('/'), self.base_path.strip('/'), path.strip('/'))
             if self.session:
                 cookies['NITRO_AUTH_TOKEN'] = self.session
 
             if payload:
                 if method and method.upper() == 'PUT':
-                    response = requests.put(url, data=json.dumps(payload), headers=headers, cookies=cookies)
+                    response = requests.put(url, data=json.dumps(payload), headers=headers, cookies=cookies, verify=self.verify_ssl)
                 else:
                     headers['Content-Type'] = 'application/vnd.com.citrix.netscaler.'+self.get_req_name(path)+'+json'
-                    response = requests.post(url, data=json.dumps(payload), headers=headers, cookies=cookies)
+                    response = requests.post(url, data=json.dumps(payload), headers=headers, cookies=cookies, verify=self.verify_ssl)
             else:
                 if method and method.upper() == 'DELETE':
-                    response = requests.delete(url, headers=headers, cookies=cookies)
+                    response = requests.delete(url, headers=headers, cookies=cookies, verify=self.verify_ssl)
                 else:
-                    response = requests.get(url, headers=headers, cookies=cookies)
+                    response = requests.get(url, headers=headers, cookies=cookies, verify=self.verify_ssl)
 
             if response.ok and payload and 'login' in payload:
                 self.session = response.cookies['NITRO_AUTH_TOKEN']
                 if response.text == '':
-                    result = {'headers': response.headers}
+                    result = {'headers': dict(response.headers)}
                 else:
                     result = {'result': response.text}
             else:
                 if response.ok:
                     try:
-                        result = response.json()
+                        result = dict(response.json())
                     except:
                         if response.text == '':
-                            result = {'headers': response.headers}
+                            result = {'headers': dict(response.headers)}
                         else:
                             result = {'result': response.text}
-                else:
-                    print response.text
+                elif self.logging:
+                    self.logger.error(response.text)
 
             if payload and 'logout' in payload:
                 self.end_session()
                
             if self.logging:
-                with open(self.log, 'a') as f:
-                    if payload:
-                        f.write((method.upper() if method else "POST")+" "+url)
-                        f.write('\n')
-                        pprint.pprint(payload, f, 2)
+                if payload:
+                    self.logger.info("%s %s" % (method.upper() if method else "POST", url))
+                    self.logger.debug("Request Headers: \n%s\n" % pprint.pformat(headers, indent=2))
+                    if 'login' in payload:
+                        masked = payload
+                        masked['login']['password'] = '...masked...'
+                        self.logger.debug("Request Payload: \n%s\n" % pprint.pformat(masked, indent=2))
                     else:
-                        f.write((method.upper() if method else "GET")+" "+url)
-                        f.write('\n')
-                    f.write('\n')
-                    if response.ok:
-                        #pprint.pprint(response.headers, f, 2)  # if you want to log the headers too...
-                        pprint.pprint(result, f, 2)
-                    else:
-                        f.write(response.text)
-                        f.write('\n')
-                    f.write('\n\n\n')
+                        self.logger.debug("Request Payload: \n%s\n" % pprint.pformat(payload, indent=2))
+                else:
+                    self.logger.info("%s %s" % (method.upper() if method else "GET", url))
+                    self.logger.debug("Request Headers: \n%s\n" % pprint.pformat(headers, indent=2))
+                if response.ok:
+                    self.logger.debug("Response Headers: \n%s\n" % pprint.pformat(dict(response.headers), indent=2))
+                    self.logger.info("Response Object: \n%s\n" % pprint.pformat(result, indent=2))
+                else:
+                    self.logger.info("Response Text: \n%s\n" % response.text)
 
             return result
         else:
-            print("ERROR: --host, --username and --password are required to use the api...")
+            print("ERROR: endpoint, username and password are required to use the api...")
             return None
-
-if __name__ == '__main__':
-    with API(args) as api:
-        pprint.pprint(api.request('/stat/system'))
-

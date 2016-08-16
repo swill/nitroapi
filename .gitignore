@@ -1,2 +1,7 @@
 *.pyc
+*.json
 logs
+dist
+build
+nitroapi.egg-info/*
+README.txt
